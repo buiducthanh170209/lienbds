@@ -68,7 +68,7 @@ export default function Home() {
       formData.append("image", file);
       formData.append("prompt", prompt.trim());
 
-      const res = await fetch("/api/convert", {
+           const res = await fetch("/api/convert", {
         method: "POST",
         body: formData,
       });
@@ -78,8 +78,19 @@ export default function Home() {
         throw new Error(err.error || "Lỗi server");
       }
 
-      // Lấy file Excel
-      const blob = await res.blob();
+      const data = await res.json();
+
+      // Tạo file Excel từ base64 và tải về
+      const byteCharacters = atob(data.excel);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -89,99 +100,9 @@ export default function Home() {
       a.remove();
       window.URL.revokeObjectURL(url);
 
-      // Lấy preview table từ header
-      const headersJson = res.headers.get("X-Table-Data");
-      if (headersJson) {
-        try {
-          setTableData(JSON.parse(headersJson));
-        } catch {}
+      // Hiển thị preview bảng
+      if (data.table) {
+        setTableData(data.table);
       }
 
       setStatus({ msg: "✅ Đã tạo file ket-qua-ai.xlsx và tải về thành công!", type: "success" });
-    } catch (err: any) {
-      console.error(err);
-      setStatus({ msg: "❌ Lỗi: " + (err.message || "Không thể xử lý"), type: "error" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="container">
-      <h1>🖼️ → 📊 AI Ảnh thành Excel</h1>
-      <p className="subtitle">
-        Upload ảnh + viết yêu cầu → AI tự tạo file .xlsx
-      </p>
-
-      <div className="card">
-        <label>1. Upload ảnh (bảng, hóa đơn, danh sách, biểu đồ...)</label>
-        <div
-          ref={dropZoneRef}
-          className="upload-zone"
-          onClick={() => fileInputRef.current?.click()}
-          onDrop={onDrop}
-          onDragOver={onDragOver}
-          onDragLeave={onDragLeave}
-        >
-          <p>Kéo thả ảnh vào đây hoặc click để chọn</p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-          />
-          {preview && <img src={preview} alt="Preview" />}
-        </div>
-      </div>
-
-      <div className="card">
-        <label>2. Viết yêu cầu của bạn (bằng tiếng Việt)</label>
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder={`Ví dụ:
-- Trích xuất toàn bộ bảng thành Excel
-- Cột A: Tên sản phẩm, Cột B: Số lượng, Cột C: Đơn giá
-- Chỉ lấy các dòng có số lượng > 0
-- Thêm cột Thành tiền = Số lượng × Đơn giá`}
-        />
-      </div>
-
-      <button onClick={convert} disabled={loading || !file}>
-        {loading ? "Đang xử lý..." : "Chuyển thành Excel"}
-      </button>
-
-      {status && (
-        <div className={`status ${status.type}`}>{status.msg}</div>
-      )}
-
-      {tableData && tableData.headers?.length > 0 && (
-        <div className="preview-table">
-          <table>
-            <thead>
-              <tr>
-                {tableData.headers.map((h, i) => (
-                  <th key={i}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {tableData.rows.map((row, ri) => (
-                <tr key={ri}>
-                  {row.map((cell, ci) => (
-                    <td key={ci}>{cell ?? ""}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <p className="footer">
-        Powered by Gemini Vision • Deploy trên Vercel
-      </p>
-    </div>
-  );
-}
