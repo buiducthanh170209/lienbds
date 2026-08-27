@@ -70,16 +70,24 @@ export default function Home() {
       formData.append("prompt", prompt.trim());
 
       const res = await fetch("/api/convert", {
-        method: "POST",
-        body: formData,
-      });
+  method: "POST",
+  body: formData,
+});
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Lỗi server");
-      }
+// Đọc text trước để bắt được lỗi thật
+const text = await res.text();
 
-      const data = await res.json();
+let data;
+try {
+  data = JSON.parse(text);
+} catch {
+  console.error("Server trả về không phải JSON:", text);
+  throw new Error(text.slice(0, 300) || "Lỗi server không xác định");
+}
+
+if (!res.ok) {
+  throw new Error(data.error || "Lỗi server");
+}
 
       // Tải file Excel
       const byteCharacters = atob(data.excel);
