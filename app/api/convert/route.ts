@@ -94,7 +94,7 @@ Nhiệm vụ của bạn:
       );
     }
 
-    // Tạo file Excel
+       // Tạo file Excel
     const wsData = [parsed.headers, ...parsed.rows];
     const worksheet = XLSX.utils.aoa_to_sheet(wsData);
     const workbook = XLSX.utils.book_new();
@@ -105,21 +105,10 @@ Nhiệm vụ của bạn:
       bookType: "xlsx",
     });
 
-    // Trả file + header chứa preview data
-    return new NextResponse(excelBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type":
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": 'attachment; filename="ket-qua-ai.xlsx"',
-        "X-Table-Data": JSON.stringify(parsed),
-      },
+    // Trả về JSON chứa base64 + dữ liệu bảng (tránh lỗi header Unicode)
+    const base64Excel = Buffer.from(excelBuffer).toString("base64");
+
+    return NextResponse.json({
+      excel: base64Excel,
+      table: parsed,
     });
-  } catch (error: any) {
-    console.error("Convert error:", error);
-    return NextResponse.json(
-      { error: error.message || "Lỗi xử lý phía server" },
-      { status: 500 }
-    );
-  }
-}
