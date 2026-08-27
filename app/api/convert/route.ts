@@ -3,7 +3,7 @@ import * as XLSX from "xlsx";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 60; // giây
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-3.5-flash",
+      model: "gemini-1.5-flash", // ← đổi tên model hợp lệ
       generationConfig: {
         temperature: 0.1,
         responseMimeType: "application/json",
@@ -70,6 +70,7 @@ Nhiệm vụ của bạn:
     ]);
 
     const responseText = result.response.text();
+
     // Làm sạch nếu AI vẫn thêm markdown
     let jsonText = responseText
       .replace(/```json/gi, "")
@@ -77,6 +78,7 @@ Nhiệm vụ của bạn:
       .trim();
 
     let parsed: { headers: string[]; rows: any[][] };
+
     try {
       parsed = JSON.parse(jsonText);
     } catch {
@@ -94,7 +96,7 @@ Nhiệm vụ của bạn:
       );
     }
 
-       // Tạo file Excel
+    // Tạo file Excel
     const wsData = [parsed.headers, ...parsed.rows];
     const worksheet = XLSX.utils.aoa_to_sheet(wsData);
     const workbook = XLSX.utils.book_new();
@@ -105,10 +107,17 @@ Nhiệm vụ của bạn:
       bookType: "xlsx",
     });
 
-    // Trả về JSON chứa base64 + dữ liệu bảng (tránh lỗi header Unicode)
     const base64Excel = Buffer.from(excelBuffer).toString("base64");
 
     return NextResponse.json({
       excel: base64Excel,
       table: parsed,
     });
+  } catch (error: any) {
+    console.error("API Error:", error);
+    return NextResponse.json(
+      { error: error.message || "Lỗi server không xác định" },
+      { status: 500 }
+    );
+  }
+}
