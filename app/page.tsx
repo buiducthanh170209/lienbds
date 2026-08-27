@@ -67,7 +67,8 @@ export default function Home() {
       const formData = new FormData();
       formData.append("image", file);
       formData.append("prompt", prompt.trim());
-           const res = await fetch("/api/convert", {
+      
+         const res = await fetch("/api/convert", {
         method: "POST",
         body: formData,
       });
